@@ -9,17 +9,8 @@
     :license: Apache License v2.0, see LICENSE for more details.
 """
 from data import service_types, service_definitions, service_discovery, srs
-from flask import Flask, render_template, request, abort, json, jsonify, make_response
-import random
-
-# Configuration
-DEBUG = True
-ORGANIZATION = 'Miami-Dade County'
-JURISDICTION = 'miamidade.gov'
-
-app = Flask(__name__)
-app.config.from_object(__name__)
-app.config.from_envvar('GEOREPORT_SETTINGS', silent=True)
+from flask import render_template, request, abort, json, jsonify, make_response
+from app import app, db, model
 
 
 @app.route('/')
@@ -92,7 +83,7 @@ def service_requests(format):
         if format == 'json':
             return jsonify(sr)
         elif format == 'xml':
-            repsonse = make_response(render_template('success.xml', sr=sr))
+            response = make_response(render_template('success.xml', sr=sr))
             response.headers['Content-Type'] = 'text/xml; charset=utf-8'
             return response
     else:
@@ -111,7 +102,7 @@ def service_requests(format):
 @app.route('/requests/<service_request_id>.<format>')
 def service_request(service_request_id, format):
     """Query the current status of an individual request."""
-    result = search(request.form)
+    result = search(service_request_id)
     if format == 'json':
         return jsonify(srs[0])
     elif format == 'xml':
@@ -130,15 +121,26 @@ def token(token, format):
     abort(404)
 
 
-def search(service_request):
+def search(service_request_id):
     """Query service requests"""
-    pass # Implementation specific
+    # Implementation specific
+    sr = model.ServiceRequest.query.get(service_request_id)
+    print sr
+    return sr
 
 
 def save(service_request):
     """Save service request"""
     # Implementation specific.  Just return a random SR id for now
-    return {'service_request_id':random.randint(1,10000)}
+    sr = model.ServiceRequest()
+    sr.status = 0
+    sr.service_name = service_request['service_name']
+    sr.description = service_request['v']
+    #...
+    db.session.add(sr)
+    db.session.commit()
+    print sr
+    return {'service_request_id':sr.id}
 
 
 if __name__ == '__main__':
